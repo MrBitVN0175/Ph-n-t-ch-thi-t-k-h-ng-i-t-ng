@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lập Phiếu Đổi Hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f3f4f6; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .disabled-section { opacity: 0.5; pointer-events: none; filter: grayscale(100%); }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-blue-800 text-white h-12 flex items-center justify-between px-4 shadow-md shrink-0">
+        <div class="flex items-center space-x-4">
+            <a href="supermarket_system.html" class="hover:text-blue-200"><i class="fas fa-arrow-left mr-1"></i> Trang chủ</a>
+            <span class="font-bold text-lg">|</span>
+            <span class="font-bold text-lg uppercase"><i class="fas fa-exchange-alt mr-2"></i>Lập Phiếu Đổi Hàng</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm font-mono bg-blue-900 px-2 py-1 rounded" id="current-date"></span>
+            <span class="font-semibold"><i class="fas fa-user-circle mr-1"></i> Thu ngân</span>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="flex-grow flex flex-col p-4 space-y-4 overflow-hidden">
+        
+        <!-- 1. THANH TÌM KIẾM HÓA ĐƠN GỐC -->
+        <div class="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between shrink-0">
+            <div class="flex items-center w-2/3 space-x-4">
+                <div class="relative w-1/2">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                        <i class="fas fa-receipt"></i>
+                    </span>
+                    <input type="text" id="invoice-search" class="w-full pl-10 pr-4 py-2 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="Nhập mã hóa đơn gốc (VD: HD001)...">
+                </div>
+                <button onclick="searchInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow transition">
+                    <i class="fas fa-search mr-2"></i>Tra cứu
+                </button>
+            </div>
+            
+            <!-- Khu vực hiển thị trạng thái hóa đơn -->
+            <div id="invoice-status" class="flex items-center px-4 py-2 rounded-lg border hidden">
+                <!-- Nội dung sẽ được JS điền vào -->
+            </div>
+        </div>
+
+        <!-- 2. KHU VỰC THAO TÁC (CHIA ĐÔI) -->
+        <div class="flex-grow flex space-x-4 overflow-hidden">
+            
+            <!-- BÊN TRÁI: DANH SÁCH HÀNG TRẢ LẠI -->
+            <div class="w-1/2 bg-white rounded-xl shadow-sm flex flex-col border border-gray-200">
+                <div class="p-3 bg-red-50 border-b border-red-100 flex justify-between items-center rounded-t-xl">
+                    <h3 class="font-bold text-red-700"><i class="fas fa-undo mr-2"></i>HÀNG KHÁCH TRẢ LẠI</h3>
+                    <span class="text-xs text-red-500 italic">(Chọn sản phẩm khách muốn trả)</span>
+                </div>
+                
+                <div class="flex-grow overflow-y-auto p-2">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0">
+                            <tr>
+                                <th class="p-2 w-8">Chọn</th>
+                                <th class="p-2">Tên Hàng</th>
+                                <th class="p-2 text-center w-16">SL Mua</th>
+                                <th class="p-2 text-center w-16">SL Trả</th>
+                                <th class="p-2 text-right">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody id="return-list-body">
+                            <!-- JS render -->
+                            <tr class="text-center text-gray-400 mt-4"><td colspan="5" class="py-10">Vui lòng nhập mã hóa đơn...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="p-3 bg-gray-50 border-t flex justify-between items-center">
+                    <span class="font-medium text-gray-600">Tổng giá trị trả lại:</span>
+                    <span id="total-return-val" class="text-xl font-bold text-red-600">0 ₫</span>
+                </div>
+            </div>
+
+            <!-- BÊN PHẢI: DANH SÁCH HÀNG ĐỔI MỚI -->
+            <div id="new-goods-section" class="w-1/2 bg-white rounded-xl shadow-sm flex flex-col border border-gray-200 disabled-section">
+                <div class="p-3 bg-green-50 border-b border-green-100 flex justify-between items-center rounded-t-xl">
+                    <h3 class="font-bold text-green-700"><i class="fas fa-cart-plus mr-2"></i>HÀNG ĐỔI MỚI</h3>
+                    <div class="relative w-48">
+                        <input type="text" id="new-product-input" onkeypress="handleNewProductEnter(event)" class="w-full px-3 py-1 text-sm border border-green-300 rounded focus:outline-none" placeholder="Quét mã SP mới...">
+                    </div>
+                </div>
+
+                <div class="flex-grow overflow-y-auto p-2">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0">
+                            <tr>
+                                <th class="p-2">Tên Hàng</th>
+                                <th class="p-2 text-center w-12">ĐVT</th>
+                                <th class="p-2 text-center w-16">SL</th>
+                                <th class="p-2 text-right">Đơn giá</th>
+                                <th class="p-2 text-right">Thành tiền</th>
+                                <th class="p-2 w-8"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="new-list-body">
+                            <!-- JS render -->
+                        </tbody>
+                    </table>
+                     <!-- Empty State cho hàng mới -->
+                     <div id="new-list-empty" class="flex flex-col items-center justify-center h-40 text-gray-300">
+                        <i class="fas fa-box-open text-3xl mb-2"></i>
+                        <span class="text-xs">Chưa chọn sản phẩm mới</span>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-gray-50 border-t flex justify-between items-center">
+                    <span class="font-medium text-gray-600">Tổng giá trị mới:</span>
+                    <span id="total-new-val" class="text-xl font-bold text-green-600">0 ₫</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. FOOTER: TÍNH TOÁN & XÁC NHẬN -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border-t-4 border-blue-600 shrink-0">
+            <div class="flex justify-between items-center">
+                <!-- Thông tin chênh lệch -->
+                <div class="flex items-center space-x-6">
+                    <div class="text-right">
+                        <div class="text-sm text-gray-500">Chênh lệch (Mới - Trả)</div>
+                        <div id="diff-label" class="text-2xl font-bold text-gray-800">0 ₫</div>
+                    </div>
+                    
+                    <!-- Mũi tên chỉ dẫn -->
+                    <div id="diff-indicator" class="hidden px-4 py-2 rounded-lg font-bold text-white text-sm animate-pulse">
+                        <!-- JS: KHÁCH CẦN BÙ hoặc HOÀN LẠI KHÁCH -->
+                    </div>
+                </div>
+
+                <!-- Nút bấm -->
+                <div class="flex space-x-3">
+                    <button onclick="location.reload()" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-lg transition">
+                        Hủy bỏ
+                    </button>
+                    <button onclick="confirmExchange()" id="btn-confirm" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg opacity-50 cursor-not-allowed" disabled>
+                        <i class="fas fa-print mr-2"></i>Xác Nhận Đổi Hàng
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* =========================================
+           1. MOCK DATA (DỮ LIỆU GIẢ LẬP)
+        ========================================= */
+        // Lấy danh sách sản phẩm từ localStorage (đã tạo ở trang chủ)
+        const dbData = JSON.parse(localStorage.getItem('supermarket_db') || '{}');
+        const products = dbData.products || [];
+
+        // Giả lập danh sách hóa đơn đã bán để test
+        const mockInvoices = [
+            {
+                id: "HD001",
+                date: new Date().toISOString().split('T')[0], // Hôm nay
+                customer: "Nguyễn Văn A",
+                isVip: true,
+                items: [
+                    { id: "SP001", name: "Mì Hảo Hảo Tôm Chua Cay", price: 4500, qty: 10, unit: "Gói" },
+                    { id: "SP002", name: "Nước ngọt Coca Cola", price: 10000, qty: 5, unit: "Lon" }
+                ]
+            },
+            {
+                id: "HD002",
+                date: "2023-01-01", // Quá hạn 30 ngày
+                customer: "Khách Lẻ",
+                isVip: false, // Không VIP
+                items: [
+                    { id: "SP008", name: "Bột giặt OMO 3kg", price: 150000, qty: 1, unit: "Túi" }
+                ]
+            },
+            {
+                id: "HD003",
+                date: new Date().toISOString().split('T')[0],
+                customer: "Trần Thị B",
+                isVip: false, // Hợp lệ ngày nhưng KHÔNG VIP (theo kịch bản thì bị từ chối)
+                items: [
+                    { id: "SP005", name: "Gạo Nàng Thơm 5kg", price: 120000, qty: 2, unit: "Túi" }
+                ]
+            }
+        ];
+
+        /* =========================================
+           2. BIẾN TOÀN CỤC & STATE
+        ========================================= */
+        let currentInvoice = null;
+        let returnCart = []; // Danh sách hàng trả
+        let newCart = [];    // Danh sách hàng mới
+        const maxReturnDays = 30;
+
+        // DOM Elements
+        const invoiceSearchInput = document.getElementById('invoice-search');
+        const invoiceStatus = document.getElementById('invoice-status');
+        const returnListBody = document.getElementById('return-list-body');
+        const newGoodsSection = document.getElementById('new-goods-section');
+        const newProductInput = document.getElementById('new-product-input');
+        const newListBody = document.getElementById('new-list-body');
+        const btnConfirm = document.getElementById('btn-confirm');
+        
+        // Formatter
+        const formatMoney = (amount) => new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
+
+        window.onload = function() {
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('vi-VN');
+            invoiceSearchInput.focus();
+        };
+
+        /* =========================================
+           3. CHỨC NĂNG TRA CỨU HÓA ĐƠN
+        ========================================= */
+        function searchInvoice() {
+            const code = invoiceSearchInput.value.trim();
+            if (!code) return;
+
+            // Reset state
+            currentInvoice = null;
+            returnCart = [];
+            newCart = [];
+            resetUI();
+
+            const invoice = mockInvoices.find(inv => inv.id === code);
+
+            if (!invoice) {
+                showStatus(false, "❌ Không tìm thấy thông tin hóa đơn!", "bg-red-100 text-red-700 border-red-200");
+                return;
+            }
+
+            // Kiểm tra điều kiện
+            const today = new Date();
+            const invDate = new Date(invoice.date);
+            const diffTime = Math.abs(today - invDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+            // 1. Check ngày
+            if (diffDays > maxReturnDays) {
+                showStatus(false, `❌ Hóa đơn đã quá hạn đổi trả (${diffDays} ngày > 30 ngày).`, "bg-red-100 text-red-700 border-red-200");
+                return;
+            }
+
+            // 2. Check VIP (Theo kịch bản: Không VIP -> Từ chối)
+            if (!invoice.isVip) {
+                showStatus(false, "⚠️ Từ chối đổi hàng: Giao dịch gốc không áp dụng thẻ VIP.", "bg-orange-100 text-orange-700 border-orange-200");
+                return;
+            }
+
+            // Hợp lệ
+            currentInvoice = invoice;
+            showStatus(true, `✅ Hợp lệ: ${invoice.customer} (Ngày mua: ${invoice.date})`, "bg-green-100 text-green-700 border-green-200");
+            
+            // Mở khóa phần bên phải
+            newGoodsSection.classList.remove('disabled-section');
+            newGoodsSection.classList.remove('opacity-50', 'pointer-events-none', 'filter', 'grayscale');
+            
+            renderReturnList();
+        }
+
+        function showStatus(isValid, msg, classes) {
+            invoiceStatus.className = `flex items-center px-4 py-2 rounded-lg border ${classes}`;
+            invoiceStatus.innerHTML = `<span class="font-bold text-sm">${msg}</span>`;
+            invoiceStatus.classList.remove('hidden');
+        }
+
+        function resetUI() {
+            returnListBody.innerHTML = '';
+            newListBody.innerHTML = '';
+            document.getElementById('new-list-empty').style.display = 'flex';
+            newGoodsSection.classList.add('disabled-section');
+            updateSummary();
+        }
+
+        /* =========================================
+           4. XỬ LÝ DANH SÁCH TRẢ (LEFT)
+        ========================================= */
+        function renderReturnList() {
+            returnListBody.innerHTML = '';
+            currentInvoice.items.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50";
+                tr.innerHTML = `
+                    <td class="p-2 text-center">
+                        <input type="checkbox" onchange="toggleReturnItem(${index}, this)" class="w-4 h-4 text-blue-600 rounded">
+                    </td>
+                    <td class="p-2 font-medium">${item.name}</td>
+                    <td class="p-2 text-center">${item.qty}</td>
+                    <td class="p-2 text-center">
+                        <input type="number" id="return-qty-${index}" min="1" max="${item.qty}" value="1" 
+                            disabled 
+                            onchange="updateReturnQty(${index}, this.value)"
+                            class="w-12 text-center border rounded bg-gray-100 p-1 text-sm">
+                    </td>
+                    <td class="p-2 text-right font-bold text-gray-700" id="return-total-${index}">0 ₫</td>
+                `;
+                returnListBody.appendChild(tr);
+            });
+        }
+
+        function toggleReturnItem(index, checkbox) {
+            const qtyInput = document.getElementById(`return-qty-${index}`);
+            const item = currentInvoice.items[index];
+
+            if (checkbox.checked) {
+                // Enable input
+                qtyInput.disabled = false;
+                qtyInput.classList.remove('bg-gray-100');
+                qtyInput.focus();
+                
+                // Add to returnCart
+                returnCart.push({ ...item, returnQty: parseInt(qtyInput.value), originalIndex: index });
+            } else {
+                // Disable input
+                qtyInput.disabled = true;
+                qtyInput.classList.add('bg-gray-100');
+                
+                // Remove from returnCart
+                returnCart = returnCart.filter(i => i.originalIndex !== index);
+                
+                // Reset display total for row
+                document.getElementById(`return-total-${index}`).innerText = "0 ₫";
+            }
+            reCalcReturnCart();
+        }
+
+      function updateReturnQty(index, val) {
+    const qty = parseInt(val);
+    const item = currentInvoice.items[index];
+
+    if (qty > item.qty) {
+        alert("❌ Trả quá số lượng đã mua!");
+        document.getElementById(`return-qty-${index}`).value = item.qty;
+        return;
+    }
+    if (qty < 1) {
+        document.getElementById(`return-qty-${index}`).value = 1;
+        return;
+    }
+
+    const cartItem = returnCart.find(i => i.originalIndex === index);
+    if (cartItem) {
+        cartItem.returnQty = qty;
+    }
+    reCalcReturnCart();
+}
+
+        function reCalcReturnCart() {
+            // Update UI từng dòng
+            returnCart.forEach(item => {
+                const total = item.price * item.returnQty;
+                document.getElementById(`return-total-${item.originalIndex}`).innerText = formatMoney(total);
+            });
+            updateSummary();
+        }
+
+        /* =========================================
+           5. XỬ LÝ DANH SÁCH MỚI (RIGHT)
+        ========================================= */
+        function handleNewProductEnter(e) {
+            if (e.key === 'Enter') {
+                const code = e.target.value.trim();
+                if (code) addNewProduct(code);
+            }
+        }
+
+      function addNewProduct(code) {
+    const product = products.find(p => p.barcode === code || p.id === code);
+
+    if (!product) {
+        alert("❌ Không tìm thấy sản phẩm!");
+        return;
+    }
+    if (product.stock <= 0) {
+        alert("⚠️Sản phẩm mới hết hàng!");
+        return;
+    }
+
+    const existing = newCart.find(p => p.id === product.id);
+    if (existing) {
+        existing.qty++;
+    } else {
+        newCart.push({ ...product, qty: 1 });
+    }
+
+    newProductInput.value = '';
+    renderNewCart();
+}
+
+
+        function renderNewCart() {
+            newListBody.innerHTML = '';
+            
+            if (newCart.length === 0) {
+                document.getElementById('new-list-empty').style.display = 'flex';
+            } else {
+                document.getElementById('new-list-empty').style.display = 'none';
+            }
+
+            newCart.forEach((item, index) => {
+                const total = item.price * item.qty;
+                const tr = document.createElement('tr');
+                tr.className = "border-b";
+                tr.innerHTML = `
+                    <td class="p-2 font-medium text-blue-900">${item.name}</td>
+                    <td class="p-2 text-center text-xs">${item.unit}</td>
+                    <td class="p-2 text-center">
+                        <input type="number" min="1" value="${item.qty}" 
+                            onchange="updateNewQty(${index}, this.value)"
+                            class="w-12 text-center border rounded p-1 text-sm">
+                    </td>
+                    <td class="p-2 text-right text-xs">${formatMoney(item.price)}</td>
+                    <td class="p-2 text-right font-bold text-sm">${formatMoney(total)}</td>
+                    <td class="p-2 text-center">
+                        <button onclick="removeNewItem(${index})" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+                    </td>
+                `;
+                newListBody.appendChild(tr);
+            });
+            updateSummary();
+        }
+
+        function updateNewQty(index, val) {
+            const qty = parseInt(val);
+            if (qty < 1) newCart[index].qty = 1;
+            else newCart[index].qty = qty;
+            renderNewCart();
+        }
+
+        function removeNewItem(index) {
+            newCart.splice(index, 1);
+            renderNewCart();
+        }
+
+        /* =========================================
+           6. TÍNH TOÁN TỔNG & CHÊNH LỆCH
+        ========================================= */
+        function updateSummary() {
+            // 1. Tổng trả
+            const totalReturn = returnCart.reduce((sum, item) => sum + (item.price * item.returnQty), 0);
+            document.getElementById('total-return-val').innerText = formatMoney(totalReturn);
+
+            // 2. Tổng mới
+            const totalNew = newCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            document.getElementById('total-new-val').innerText = formatMoney(totalNew);
+
+            // 3. Chênh lệch
+            const diff = totalNew - totalReturn;
+            const diffLabel = document.getElementById('diff-label');
+            const diffIndicator = document.getElementById('diff-indicator');
+            const btnConfirm = document.getElementById('btn-confirm');
+
+            diffLabel.innerText = formatMoney(diff);
+
+            if (returnCart.length === 0 && newCart.length === 0) {
+                diffIndicator.className = "hidden";
+                btnConfirm.disabled = true;
+                btnConfirm.classList.add('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+
+            // Enable nút xác nhận nếu có hàng trả
+            if (returnCart.length > 0) {
+                btnConfirm.disabled = false;
+                btnConfirm.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                 btnConfirm.disabled = true;
+                 btnConfirm.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            diffIndicator.classList.remove('hidden');
+            if (diff > 0) {
+                // Khách bù tiền (Xanh)
+                diffLabel.className = "text-2xl font-bold text-green-600";
+                diffIndicator.className = "px-4 py-2 rounded-lg font-bold text-white text-sm bg-green-500 animate-pulse";
+                diffIndicator.innerHTML = `<i class="fas fa-arrow-up mr-2"></i>KHÁCH BÙ TIỀN`;
+            } else if (diff < 0) {
+                // Siêu thị hoàn tiền (Đỏ)
+                diffLabel.className = "text-2xl font-bold text-red-600";
+                diffIndicator.className = "px-4 py-2 rounded-lg font-bold text-white text-sm bg-red-500 animate-pulse";
+                diffIndicator.innerHTML = `<i class="fas fa-arrow-down mr-2"></i>HOÀN LẠI KHÁCH`;
+            } else {
+                // Ngang giá (Xám/Xanh dương)
+                diffLabel.className = "text-2xl font-bold text-blue-600";
+                diffIndicator.className = "px-4 py-2 rounded-lg font-bold text-white text-sm bg-blue-500";
+                diffIndicator.innerHTML = `<i class="fas fa-equals mr-2"></i>ĐỔI NGANG GIÁ`;
+            }
+        }
+
+        function confirmExchange() {
+            const diff = document.getElementById('diff-label').innerText;
+            const msg = document.getElementById('diff-indicator').innerText;
+            
+            if(confirm(`Xác nhận đổi hàng?\n\n${msg}: ${diff}`)) {
+                alert("✅ Đổi hàng thành công!\nĐã in phiếu đổi hàng.");
+                location.reload();
+            }
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lập Phiếu Trả Hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f3f4f6; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        /* Hiệu ứng mờ khi bị khóa */
+        .disabled-btn { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-blue-800 text-white h-12 flex items-center justify-between px-4 shadow-md shrink-0">
+        <div class="flex items-center space-x-4">
+            <a href="supermarket_system.html" class="hover:text-blue-200"><i class="fas fa-arrow-left mr-1"></i> Trang chủ</a>
+            <span class="font-bold text-lg">|</span>
+            <span class="font-bold text-lg uppercase"><i class="fas fa-undo mr-2"></i>Lập Phiếu Trả Hàng & Hoàn Tiền</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm font-mono bg-blue-900 px-2 py-1 rounded" id="current-date"></span>
+            <span class="font-semibold"><i class="fas fa-user-circle mr-1"></i> Thu ngân</span>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="flex-grow flex flex-col p-4 space-y-4 overflow-hidden">
+        
+        <!-- 1. TRA CỨU HÓA ĐƠN -->
+        <div class="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between shrink-0">
+            <div class="flex items-center w-2/3 space-x-4">
+                <div class="relative w-1/2">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                        <i class="fas fa-receipt"></i>
+                    </span>
+                    <input type="text" id="invoice-search" class="w-full pl-10 pr-4 py-2 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="Nhập mã hóa đơn gốc (VD: HD001)...">
+                </div>
+                <button onclick="searchInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow transition">
+                    <i class="fas fa-search mr-2"></i>Tra cứu
+                </button>
+            </div>
+            
+            <!-- Trạng thái -->
+            <div id="invoice-status" class="flex items-center px-4 py-2 rounded-lg border hidden">
+                <!-- JS fill content -->
+            </div>
+        </div>
+
+        <!-- 2. KHU VỰC THAO TÁC (CHIA ĐÔI) -->
+        <div class="flex-grow flex space-x-4 overflow-hidden">
+            
+            <!-- BÊN TRÁI: THÔNG TIN HÓA ĐƠN GỐC -->
+            <div class="w-1/2 bg-white rounded-xl shadow-sm flex flex-col border border-gray-200">
+                <div class="p-3 bg-gray-100 border-b flex justify-between items-center rounded-t-xl">
+                    <h3 class="font-bold text-gray-700"><i class="fas fa-file-invoice mr-2"></i>CHI TIẾT HÓA ĐƠN GỐC</h3>
+                    <span class="text-xs text-gray-500">(Tích chọn hàng muốn trả)</span>
+                </div>
+                
+                <div class="flex-grow overflow-y-auto p-2">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-50 text-gray-600 uppercase text-xs sticky top-0">
+                            <tr>
+                                <th class="p-2 w-10 text-center">Chọn</th>
+                                <th class="p-2">Tên Hàng</th>
+                                <th class="p-2 text-center">SL Mua</th>
+                                <th class="p-2 text-right">Đơn giá</th>
+                                <th class="p-2 text-right">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoice-items-body">
+                            <!-- JS render items -->
+                            <tr class="text-center text-gray-400 mt-10"><td colspan="5" class="py-10">Vui lòng nhập mã hóa đơn...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- BÊN PHẢI: CHI TIẾT PHIẾU CHI -->
+            <div class="w-1/2 bg-white rounded-xl shadow-sm flex flex-col border-2 border-orange-200">
+                <div class="p-3 bg-orange-50 border-b border-orange-100 flex justify-between items-center rounded-t-xl">
+                    <h3 class="font-bold text-orange-800"><i class="fas fa-file-invoice-dollar mr-2"></i>PHIẾU CHI (HOÀN TIỀN)</h3>
+                </div>
+
+                <div class="flex-grow overflow-y-auto p-2 bg-orange-50/20">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white text-gray-600 uppercase text-xs sticky top-0 shadow-sm">
+                            <tr>
+                                <th class="p-2">Hàng Trả Lại</th>
+                                <th class="p-2 text-center w-20">SL Trả</th>
+                                <th class="p-2 text-right">Đơn giá</th>
+                                <th class="p-2 text-right">Hoàn tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody id="refund-items-body">
+                            <!-- JS render items -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- Empty State -->
+                    <div id="refund-empty" class="flex flex-col items-center justify-center h-40 text-gray-300">
+                        <i class="fas fa-hand-holding-usd text-4xl mb-2"></i>
+                        <span class="text-sm">Chưa chọn sản phẩm nào để trả</span>
+                    </div>
+                </div>
+
+                <!-- Footer của phiếu chi -->
+                <div class="p-4 bg-white border-t border-orange-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                    <!-- Cảnh báo kho -->
+                    <div class="mb-3 p-2 bg-yellow-50 text-yellow-700 text-xs border border-yellow-200 rounded flex items-center">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <span>Lưu ý: Hàng sẽ được nhập lại vào kho ngay sau khi lưu phiếu.</span>
+                    </div>
+
+                    <div class="flex justify-between items-end mb-4">
+                        <span class="text-gray-600 font-bold text-lg">TỔNG TIỀN HOÀN LẠI:</span>
+                        <span id="total-refund-display" class="text-3xl font-bold text-orange-600">0 ₫</span>
+                    </div>
+
+                    <button onclick="createRefundSlip()" id="btn-create-slip" class="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg shadow-lg transition flex items-center justify-center disabled-btn" disabled>
+                        <i class="fas fa-print mr-2"></i>LẬP PHIẾU CHI
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* =========================================
+           1. MOCK DATA (GIẢ LẬP DB)
+        ========================================= */
+        const dbData = JSON.parse(localStorage.getItem('supermarket_db') || '{}');
+        // Giả lập danh sách hóa đơn (Copy logic từ doihang.html để đồng bộ)
+        const mockInvoices = [
+            {
+                id: "HD001",
+                date: new Date().toISOString().split('T')[0], // Hôm nay
+                customer: "Nguyễn Văn A",
+                isVip: true,
+                items: [
+                    { id: "SP001", name: "Mì Hảo Hảo Tôm Chua Cay", price: 4500, qty: 10, unit: "Gói" },
+                    { id: "SP002", name: "Nước ngọt Coca Cola", price: 10000, qty: 5, unit: "Lon" }
+                ]
+            },
+            {
+                id: "HD002",
+                date: "2023-01-01", // Quá hạn 30 ngày
+                customer: "Khách Lẻ",
+                isVip: false, // Không VIP
+                items: [
+                    { id: "SP008", name: "Bột giặt OMO 3kg", price: 150000, qty: 1, unit: "Túi" }
+                ]
+            },
+            {
+                id: "HD003",
+                date: new Date().toISOString().split('T')[0], // Còn hạn
+                customer: "Trần Thị B",
+                isVip: false, // Nhưng KHÔNG VIP -> Bị từ chối trả hàng (theo yêu cầu)
+                items: [
+                    { id: "SP005", name: "Gạo Nàng Thơm 5kg", price: 120000, qty: 2, unit: "Túi" }
+                ]
+            }
+        ];
+
+        /* =========================================
+           2. STATE & VARIABLES
+        ========================================= */
+        let currentInvoice = null;
+        let refundCart = [];
+        const maxReturnDays = 30;
+
+        // DOM
+        const invoiceSearchInput = document.getElementById('invoice-search');
+        const invoiceStatus = document.getElementById('invoice-status');
+        const invoiceItemsBody = document.getElementById('invoice-items-body');
+        const refundItemsBody = document.getElementById('refund-items-body');
+        const btnCreateSlip = document.getElementById('btn-create-slip');
+        const refundEmpty = document.getElementById('refund-empty');
+        const totalRefundDisplay = document.getElementById('total-refund-display');
+
+        // Formatter
+        const formatMoney = (amount) => new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
+
+        window.onload = function() {
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('vi-VN');
+            invoiceSearchInput.focus();
+        };
+
+        /* =========================================
+           3. LOGIC TRA CỨU
+        ========================================= */
+        function searchInvoice() {
+            const code = invoiceSearchInput.value.trim();
+            if (!code) return;
+
+            // Reset
+            currentInvoice = null;
+            refundCart = [];
+            renderRefundList();
+            invoiceItemsBody.innerHTML = '';
+            
+            const invoice = mockInvoices.find(inv => inv.id === code);
+
+            if (!invoice) {
+                showStatus(false, "❌ Không tìm thấy hóa đơn gốc!", "bg-red-100 text-red-700 border-red-200");
+                return;
+            }
+
+            // Check Điều kiện 1: 30 ngày
+            const today = new Date();
+            const invDate = new Date(invoice.date);
+            const diffDays = Math.ceil(Math.abs(today - invDate) / (1000 * 60 * 60 * 24)); 
+
+            if (diffDays > maxReturnDays) {
+                showStatus(false, `❌ Hóa đơn quá hạn đổi trả (${diffDays} ngày).`, "bg-red-100 text-red-700 border-red-200");
+                return;
+            }
+
+            // Check Điều kiện 2: Phải có thẻ VIP (Yêu cầu đặc biệt của đề bài mục 1.1.4)
+            if (!invoice.isVip) {
+                showStatus(false, "⚠️ Từ chối: Giao dịch gốc không dùng thẻ VIP.", "bg-orange-100 text-orange-700 border-orange-200");
+                return;
+            }
+
+            // Hợp lệ
+            currentInvoice = invoice;
+            showStatus(true, `✅ Đủ điều kiện trả hàng: ${invoice.customer}`, "bg-green-100 text-green-700 border-green-200");
+            renderInvoiceItems();
+        }
+
+        function showStatus(isValid, msg, classes) {
+            invoiceStatus.className = `flex items-center px-4 py-2 rounded-lg border ${classes}`;
+            invoiceStatus.innerHTML = `<span class="font-bold text-sm">${msg}</span>`;
+            invoiceStatus.classList.remove('hidden');
+        }
+
+        /* =========================================
+           4. RENDER UI
+        ========================================= */
+        function renderInvoiceItems() {
+            invoiceItemsBody.innerHTML = '';
+            currentInvoice.items.forEach((item, index) => {
+                const total = item.price * item.qty;
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50";
+                tr.innerHTML = `
+                    <td class="p-2 text-center">
+                        <input type="checkbox" onchange="toggleRefundItem(${index}, this)" class="w-5 h-5 text-orange-600 rounded cursor-pointer">
+                    </td>
+                    <td class="p-2 font-medium">${item.name}</td>
+                    <td class="p-2 text-center">${item.qty}</td>
+                    <td class="p-2 text-right">${formatMoney(item.price)}</td>
+                    <td class="p-2 text-right font-bold text-gray-500">${formatMoney(total)}</td>
+                `;
+                invoiceItemsBody.appendChild(tr);
+            });
+        }
+
+        function renderRefundList() {
+            refundItemsBody.innerHTML = '';
+            
+            if (refundCart.length === 0) {
+                refundEmpty.style.display = 'flex';
+                updateTotal(0);
+                btnCreateSlip.disabled = true;
+                btnCreateSlip.classList.add('disabled-btn');
+                return;
+            }
+
+            refundEmpty.style.display = 'none';
+            btnCreateSlip.disabled = false;
+            btnCreateSlip.classList.remove('disabled-btn');
+
+            let grandTotal = 0;
+
+            refundCart.forEach((item, index) => {
+                const total = item.price * item.refundQty;
+                grandTotal += total;
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b bg-white";
+                tr.innerHTML = `
+                    <td class="p-2 font-medium text-orange-900">${item.name}</td>
+                    <td class="p-2 text-center">
+                        <input type="number" min="1" max="${item.maxQty}" value="${item.refundQty}" 
+                            onchange="updateRefundQty(${index}, this.value)"
+                            class="w-16 text-center border-2 border-orange-200 rounded p-1 font-bold text-orange-800 focus:outline-none focus:border-orange-500">
+                    </td>
+                    <td class="p-2 text-right text-gray-500">${formatMoney(item.price)}</td>
+                    <td class="p-2 text-right font-bold text-orange-600">${formatMoney(total)}</td>
+                `;
+                refundItemsBody.appendChild(tr);
+            });
+
+            updateTotal(grandTotal);
+        }
+
+        /* =========================================
+           5. LOGIC XỬ LÝ
+        ========================================= */
+        function toggleRefundItem(index, checkbox) {
+            const item = currentInvoice.items[index];
+
+            if (checkbox.checked) {
+                // Thêm vào danh sách trả (Mặc định trả 1 hoặc trả hết? Thường là 1 để sửa)
+                refundCart.push({
+                    ...item,
+                    refundQty: item.qty, // Mặc định trả hết số lượng đã mua cho nhanh
+                    maxQty: item.qty,
+                    originalIndex: index
+                });
+            } else {
+                // Bỏ chọn -> Xóa khỏi danh sách trả
+                refundCart = refundCart.filter(i => i.originalIndex !== index);
+            }
+            renderRefundList();
+        }
+
+        function updateRefundQty(index, val) {
+            let qty = parseInt(val);
+            const item = refundCart[index];
+
+            // Validate: Không được trả quá số lượng mua
+            if (qty > item.maxQty) {
+                alert(`Lỗi: Khách chỉ mua ${item.maxQty} sản phẩm này.\nKhông thể trả lại số lượng ${qty}.`);
+                qty = item.maxQty;
+            }
+            if (qty < 1) qty = 1;
+
+            refundCart[index].refundQty = qty;
+            renderRefundList(); // Re-render để update tổng tiền
+        }
+
+        function updateTotal(amount) {
+            totalRefundDisplay.innerText = formatMoney(amount);
+        }
+
+        function createRefundSlip() {
+            if (refundCart.length === 0) return;
+
+            const totalAmount = totalRefundDisplay.innerText;
+            const confirmMsg = `
+            -----------------------------------------
+            XÁC NHẬN LẬP PHIẾU CHI
+            -----------------------------------------
+            Khách hàng: ${currentInvoice.customer}
+            Tổng tiền hoàn lại: ${totalAmount}
+            
+            Lưu ý:
+            - Tiền sẽ được trừ khỏi quỹ tiền mặt.
+            - Hàng hóa sẽ được cộng lại vào kho.
+            
+            Bạn có chắc chắn muốn in phiếu không?
+            `;
+
+            if(confirm(confirmMsg)) {
+                // Giả lập in
+                alert("🖨️ Đang in phiếu chi...\n✅ Lập phiếu chi thành công!\nSố lượng tồn kho đã được cập nhật.");
+                location.reload();
+            }
+        }
+
+    </script>
+</body>
+</html>

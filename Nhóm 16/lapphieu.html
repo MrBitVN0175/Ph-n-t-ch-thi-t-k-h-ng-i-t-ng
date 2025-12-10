@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lập Phiếu Xin Nhập Hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f3f4f6; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        /* Hiệu ứng focus cho ô nhập số lượng */
+        .qty-input:focus { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3); border-color: #10b981; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-blue-800 text-white h-12 flex items-center justify-between px-4 shadow-md shrink-0">
+        <div class="flex items-center space-x-4">
+            <a href="supermarket_system.html" class="hover:text-blue-200"><i class="fas fa-arrow-left mr-1"></i> Trang chủ</a>
+            <span class="font-bold text-lg">|</span>
+            <span class="font-bold text-lg uppercase"><i class="fas fa-file-import mr-2"></i>Đề Xuất Nhập Hàng</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm font-mono bg-blue-900 px-2 py-1 rounded" id="today-date">--/--/----</span>
+            <span class="font-semibold"><i class="fas fa-user-circle mr-1"></i> NV Kho</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col p-4 overflow-hidden space-y-4">
+        
+        <!-- 1. THANH CÔNG CỤ & TÌM KIẾM -->
+        <div class="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center shrink-0">
+            <!-- Tìm kiếm sản phẩm thêm -->
+            <div class="flex items-center space-x-2 w-1/2">
+                <div class="relative flex-grow">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                        <i class="fas fa-search-plus"></i>
+                    </span>
+                    <input type="text" id="product-search" 
+                        onkeypress="handleSearch(event)"
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        placeholder="Nhập tên hoặc mã SP để thêm vào danh sách (Enter)...">
+                </div>
+                <button onclick="triggerSearch()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition">
+                    Thêm
+                </button>
+            </div>
+
+            <!-- Thống kê nhanh -->
+            <div class="flex space-x-6 text-sm">
+                <div class="flex items-center text-red-600">
+                    <i class="fas fa-exclamation-circle mr-2 text-lg"></i>
+                    <div>
+                        <span class="block font-bold" id="critical-count">0</span>
+                        <span class="text-xs">Sắp hết hàng</span>
+                    </div>
+                </div>
+                <div class="flex items-center text-blue-600">
+                    <i class="fas fa-list-ol mr-2 text-lg"></i>
+                    <div>
+                        <span class="block font-bold" id="total-request-items">0</span>
+                        <span class="text-xs">Mặt hàng đề xuất</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. DANH SÁCH ĐỀ XUẤT (GRID) -->
+        <div class="flex-grow bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+            <div class="overflow-y-auto flex-grow">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="p-3 w-10 text-center">#</th>
+                            <th class="p-3 w-32">Mã Hàng</th>
+                            <th class="p-3">Tên Hàng Hóa</th>
+                            <th class="p-3 w-20 text-center">ĐVT</th>
+                            <th class="p-3 w-24 text-center bg-red-50 text-red-700 border-l border-red-100">Tồn Tại</th>
+                            <th class="p-3 w-24 text-center bg-blue-50 text-blue-700 border-l border-blue-100">Định Mức</th>
+                            <th class="p-3 w-32 text-center bg-green-50 text-green-700 border-l border-green-100">SL Xin Nhập</th>
+                            <th class="p-3 w-10"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="request-table-body" class="text-sm">
+                        <!-- JS sẽ render dòng dữ liệu vào đây -->
+                    </tbody>
+                </table>
+                
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden h-64 flex flex-col items-center justify-center text-gray-400">
+                    <i class="fas fa-clipboard-check text-5xl mb-3"></i>
+                    <p>Kho hàng đang ổn định, không có đề xuất nào.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. FOOTER: ACTIONS -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border-t-2 border-teal-500 shrink-0 flex justify-between items-center">
+            <div class="text-gray-500 text-sm italic">
+                <i class="fas fa-info-circle mr-1"></i>
+                Hệ thống tự động gợi ý các mặt hàng có Tồn kho ≤ Định mức tối thiểu.
+            </div>
+            <div class="flex space-x-3">
+                <button onclick="location.reload()" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-lg transition">
+                    Làm mới
+                </button>
+                <button onclick="submitRequest()" class="px-8 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg shadow-lg transform hover:-translate-y-1 transition flex items-center">
+                    <i class="fas fa-paper-plane mr-2"></i> Gửi Phiếu Xin Nhập
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* =========================================
+           1. SETUP DATA & VARIABLES
+        ========================================= */
+        const dbData = JSON.parse(localStorage.getItem('supermarket_db') || '{}');
+        const products = dbData.products || [];
+        
+        let requestList = []; // Danh sách các item trong phiếu nhập
+
+        // DOM Elements
+        const tableBody = document.getElementById('request-table-body');
+        const emptyState = document.getElementById('empty-state');
+        const searchInput = document.getElementById('product-search');
+        
+        window.onload = function() {
+            document.getElementById('today-date').innerText = new Date().toLocaleDateString('vi-VN');
+            autoSuggestItems(); // Tự động load hàng thiếu
+            searchInput.focus();
+        };
+
+        /* =========================================
+           2. LOGIC GỢI Ý & RENDER
+        ========================================= */
+        
+        // Hàm tự động quét kho và đề xuất
+        function autoSuggestItems() {
+            requestList = [];
+            let criticalCount = 0;
+
+            products.forEach(p => {
+                // Điều kiện gợi ý: Tồn kho <= Min Stock (Định mức)
+                if (p.stock <= p.minStock) {
+                    // Logic tính số lượng đề xuất: (Max Stock giả định - Tồn hiện tại)
+                    // Ở đây giả sử Max Stock = Min Stock * 5
+                    const maxStock = p.minStock * 5;
+                    const suggestQty = maxStock - p.stock;
+
+                    requestList.push({
+                        ...p,
+                        suggestQty: suggestQty > 0 ? suggestQty : p.minStock, // Đảm bảo luôn > 0
+                        maxStock: maxStock
+                    });
+                    
+                    if(p.stock <= p.minStock) criticalCount++;
+                }
+            });
+
+            document.getElementById('critical-count').innerText = criticalCount;
+            renderTable();
+        }
+
+        function renderTable() {
+            tableBody.innerHTML = '';
+            document.getElementById('total-request-items').innerText = requestList.length;
+
+            if (requestList.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            requestList.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50 transition";
+                
+                // Style cho Tồn kho nếu bằng 0
+                const stockStyle = item.stock === 0 ? 'text-red-600 font-bold bg-red-100 rounded px-2 py-1' : 'text-gray-700';
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center text-gray-400">${index + 1}</td>
+                    <td class="p-3 font-mono font-medium text-gray-600">${item.barcode}</td>
+                    <td class="p-3 font-medium text-gray-800">${item.name}</td>
+                    <td class="p-3 text-center text-gray-500">${item.unit}</td>
+                    
+                    <!-- Tồn tại -->
+                    <td class="p-3 text-center border-l border-red-50 bg-red-50/30">
+                        <span class="${stockStyle}">${item.stock}</span>
+                    </td>
+                    
+                    <!-- Định mức -->
+                    <td class="p-3 text-center text-blue-600 border-l border-blue-50 bg-blue-50/30">
+                        ${item.minStock} - ${item.maxStock}
+                    </td>
+
+                    <!-- Ô nhập số lượng (Editable) -->
+                    <td class="p-3 text-center border-l border-green-50 bg-green-50/30">
+                        <input type="number" value="${item.suggestQty}" min="1" 
+                            onchange="updateQty(${index}, this)"
+                            class="qty-input w-24 text-center font-bold text-green-700 border border-green-300 rounded py-1 outline-none transition">
+                    </td>
+
+                    <td class="p-3 text-center">
+                        <button onclick="removeItem(${index})" class="text-gray-400 hover:text-red-500 transition" title="Xóa dòng này">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        /* =========================================
+           3. LOGIC THAO TÁC
+        ========================================= */
+
+        // Thêm thủ công sản phẩm
+        function handleSearch(e) {
+            if (e.key === 'Enter') triggerSearch();
+        }
+
+        function triggerSearch() {
+            const keyword = searchInput.value.trim().toLowerCase();
+            if (!keyword) return;
+
+            // Tìm trong DB
+            const product = products.find(p => 
+                p.barcode === keyword || 
+                p.id.toLowerCase() === keyword || 
+                p.name.toLowerCase().includes(keyword)
+            );
+
+            if (!product) {
+                alert("❌ Không tìm thấy sản phẩm này!");
+                return;
+            }
+
+            // Kiểm tra trùng trong danh sách đề xuất
+            const exists = requestList.find(i => i.id === product.id);
+            if (exists) {
+                alert("⚠️ Sản phẩm này đã có trong danh sách!");
+                // Highlight dòng đó (Nâng cao: scroll tới dòng đó)
+                return;
+            }
+
+            // Thêm vào list (Mặc định gợi ý nhập = minStock * 2)
+            const maxStock = product.minStock * 5;
+            requestList.push({
+                ...product,
+                suggestQty: product.minStock * 2,
+                maxStock: maxStock
+            });
+
+            renderTable();
+            searchInput.value = ''; // Clear input
+            
+            // Scroll xuống dưới cùng
+            setTimeout(() => {
+                tableBody.lastElementChild.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+
+        // Cập nhật số lượng
+        function updateQty(index, input) {
+            let val = parseInt(input.value);
+            
+            // Validate: Phải là số nguyên dương
+            if (isNaN(val) || val <= 0) {
+                alert("⚠️ Số lượng nhập phải là số nguyên dương lớn hơn 0!");
+                input.value = requestList[index].suggestQty; // Reset về cũ
+                input.focus();
+                input.classList.add('border-red-500');
+                return;
+            }
+
+            input.classList.remove('border-red-500');
+            requestList[index].suggestQty = val;
+        }
+
+        // Xóa dòng
+        function removeItem(index) {
+            requestList.splice(index, 1);
+            renderTable();
+        }
+
+        // Gửi phiếu
+        function submitRequest() {
+            if (requestList.length === 0) {
+                alert("Danh sách trống! Vui lòng thêm sản phẩm.");
+                return;
+            }
+
+            // Confirm
+            const totalQty = requestList.reduce((sum, item) => sum + item.suggestQty, 0);
+            const msg = `
+            -----------------------------------------
+            XÁC NHẬN GỬI YÊU CẦU NHẬP HÀNG
+            -----------------------------------------
+            Tổng số mặt hàng: ${requestList.length}
+            Tổng số lượng nhập: ${totalQty}
+            
+            Phiếu sẽ được gửi lên hệ thống Quản lý để duyệt.
+            `;
+
+            if (confirm(msg)) {
+                // Giả lập gửi thành công
+                // Trong thực tế sẽ gọi API POST /api/import-requests
+                
+                alert("✅ Gửi yêu cầu thành công!\nMã phiếu: PN-" + Date.now().toString().slice(-6));
+                
+                // Reset
+                requestList = [];
+                renderTable();
+                autoSuggestItems(); // Load lại gợi ý mới nếu cần
+            }
+        }
+
+    </script>
+</body>
+</html>

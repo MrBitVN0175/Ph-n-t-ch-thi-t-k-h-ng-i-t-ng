@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra Cứu Hàng Hóa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f3f4f6; }
+        /* Hiệu ứng card sản phẩm */
+        .product-card { transition: all 0.2s; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .search-glow:focus-within { box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.3); }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-blue-800 text-white h-16 flex items-center justify-between px-6 shadow-md shrink-0">
+        <div class="flex items-center space-x-4">
+            <a href="supermarket_system.html" class="hover:text-blue-200 transition bg-blue-900 bg-opacity-50 px-3 py-2 rounded-lg">
+                <i class="fas fa-arrow-left mr-2"></i>Trang chủ
+            </a>
+            <span class="text-2xl font-bold tracking-wide"><i class="fas fa-search mr-3"></i>TRA CỨU THÔNG TIN SẢN PHẨM</span>
+        </div>
+        <div class="flex items-center">
+            <span class="text-sm italic opacity-80 mr-2">Dữ liệu cập nhật lúc:</span>
+            <span id="update-time" class="font-mono bg-blue-900 px-2 py-1 rounded text-sm">--:--</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col p-6 overflow-hidden">
+        
+        <!-- 1. THANH TÌM KIẾM (Trung tâm) -->
+        <div class="w-full max-w-4xl mx-auto mb-8 shrink-0 relative z-10">
+            <div class="relative search-glow rounded-2xl shadow-lg">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-6 text-purple-600">
+                    <i class="fas fa-barcode text-3xl"></i>
+                </span>
+                <input type="text" id="search-input" 
+                    oninput="handleSearch()"
+                    class="w-full pl-20 pr-6 py-5 rounded-2xl border-none text-2xl font-medium text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white" 
+                    placeholder="Nhập tên, mã hàng hoặc quét mã vạch..." autofocus autocomplete="off">
+                
+                <!-- Clear Button -->
+                <button onclick="clearSearch()" id="clear-btn" class="absolute inset-y-0 right-0 flex items-center pr-6 text-gray-400 hover:text-red-500 hidden transition">
+                    <i class="fas fa-times-circle text-2xl"></i>
+                </button>
+            </div>
+            <p class="text-center text-gray-500 mt-2 text-sm italic">Gõ từ khóa để tìm kiếm tức thì (Không cần nhấn Enter)</p>
+        </div>
+
+        <!-- 2. KẾT QUẢ TÌM KIẾM -->
+        <div class="flex-grow overflow-y-auto rounded-xl">
+            
+            <!-- Trạng thái chờ -->
+            <div id="welcome-state" class="h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
+                <i class="fas fa-search-location text-8xl mb-4"></i>
+                <p class="text-2xl font-light">Sẵn sàng tra cứu</p>
+            </div>
+
+            <!-- Trạng thái không tìm thấy -->
+            <div id="not-found-state" class="hidden h-full flex flex-col items-center justify-center text-gray-400">
+                <i class="fas fa-box-open text-6xl mb-4 text-gray-300"></i>
+                <p class="text-xl">Không tìm thấy sản phẩm nào phù hợp!</p>
+                <p class="text-sm mt-2 text-blue-500 cursor-pointer hover:underline" onclick="document.getElementById('search-input').focus()">Thử từ khóa khác</p>
+            </div>
+
+            <!-- Grid kết quả -->
+            <div id="results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10 px-2">
+                <!-- Card mẫu (sẽ được JS tạo ra) -->
+                <!-- 
+                <div class="product-card bg-white rounded-xl shadow p-4 flex flex-col border border-gray-100">
+                    <div class="h-32 bg-gray-100 rounded-lg mb-4 flex items-center justify-center text-gray-400">
+                        <i class="fas fa-image text-4xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-gray-800 mb-1 truncate">Mì Hảo Hảo Tôm Chua Cay</h3>
+                    <div class="text-gray-500 text-sm mb-2">Mã: 8930001 | ĐVT: Gói</div>
+                    <div class="mt-auto">
+                        <div class="flex justify-between items-end mb-2">
+                            <span class="text-2xl font-bold text-blue-600">4,500 ₫</span>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-2 grid grid-cols-2 gap-2 text-sm">
+                            <div class="text-center border-r border-gray-200">
+                                <span class="block text-gray-500 text-xs uppercase">Tồn kho</span>
+                                <span class="block font-bold text-green-600">240</span>
+                            </div>
+                            <div class="text-center">
+                                <span class="block text-gray-500 text-xs uppercase">Vị trí</span>
+                                <span class="block font-bold text-purple-600">Kệ A1</span>
+                            </div>
+                        </div>
+                    </div>
+                </div> 
+                -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* =========================================
+           1. LOAD DATA
+        ========================================= */
+        const dbData = JSON.parse(localStorage.getItem('supermarket_db') || '{}');
+        const products = dbData.products || [];
+
+        // DOM Elements
+        const searchInput = document.getElementById('search-input');
+        const clearBtn = document.getElementById('clear-btn');
+        const resultsGrid = document.getElementById('results-grid');
+        const welcomeState = document.getElementById('welcome-state');
+        const notFoundState = document.getElementById('not-found-state');
+
+        // Formatter tiền tệ
+        const formatMoney = (amount) => new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
+
+        window.onload = function() {
+            searchInput.focus();
+            document.getElementById('update-time').innerText = new Date().toLocaleTimeString('vi-VN');
+        };
+
+        /* =========================================
+           2. LOGIC TÌM KIẾM
+        ========================================= */
+        function handleSearch() {
+            const keyword = searchInput.value.trim().toLowerCase();
+
+            // Xử lý nút Clear
+            if (keyword.length > 0) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+
+            // Reset UI nếu rỗng
+            if (keyword === '') {
+                resultsGrid.innerHTML = '';
+                welcomeState.classList.remove('hidden');
+                notFoundState.classList.add('hidden');
+                return;
+            }
+
+            // Ẩn màn hình chào
+            welcomeState.classList.add('hidden');
+
+            // Filter logic
+            const results = products.filter(p => 
+                p.name.toLowerCase().includes(keyword) || 
+                p.barcode.includes(keyword) ||
+                p.id.toLowerCase().includes(keyword)
+            );
+
+            renderResults(results);
+        }
+
+        function clearSearch() {
+            searchInput.value = '';
+            handleSearch();
+            searchInput.focus();
+        }
+
+        function renderResults(data) {
+            resultsGrid.innerHTML = '';
+
+            if (data.length === 0) {
+                notFoundState.classList.remove('hidden');
+                return;
+            }
+
+            notFoundState.classList.add('hidden');
+
+            data.forEach(item => {
+                // Xử lý logic hiển thị tồn kho
+                let stockClass = "text-green-600";
+                let stockText = item.stock;
+                let bgClass = "bg-white";
+
+                if (item.stock === 0) {
+                    stockClass = "text-red-600";
+                    stockText = "HẾT HÀNG";
+                    bgClass = "bg-red-50 border-red-200"; // Nhấn mạnh hàng hết
+                } else if (item.stock <= item.minStock) {
+                    stockClass = "text-orange-500";
+                }
+
+                // Tạo thẻ Card HTML
+                const card = document.createElement('div');
+                card.className = `product-card ${bgClass} rounded-xl shadow-md hover:shadow-xl p-5 flex flex-col border border-gray-100 relative overflow-hidden`;
+                
+                // Icon trang trí nền
+                const bgIcon = item.stock === 0 ? '<i class="fas fa-ban absolute -bottom-4 -right-4 text-8xl text-red-100 transform rotate-12 pointer-events-none"></i>' : '';
+
+                card.innerHTML = `
+                    ${bgIcon}
+                    <div class="flex items-start justify-between relative z-10">
+                        <div class="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 mb-4 shrink-0">
+                            <!-- Placeholder Image -->
+                            <i class="fas fa-box text-2xl"></i>
+                        </div>
+                        <div class="text-right">
+                             <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded font-mono">${item.barcode}</span>
+                        </div>
+                    </div>
+                    
+                    <h3 class="font-bold text-xl text-gray-800 mb-1 leading-tight relative z-10">${item.name}</h3>
+                    <div class="text-gray-500 text-sm mb-4 relative z-10">Đơn vị: ${item.unit}</div>
+                    
+                    <div class="mt-auto relative z-10">
+                        <div class="text-3xl font-bold text-blue-700 mb-4">${formatMoney(item.price)}</div>
+                        
+                        <div class="bg-gray-50 bg-opacity-80 rounded-xl p-3 grid grid-cols-2 gap-3 border border-gray-200">
+                            <!-- Tồn kho -->
+                            <div class="text-center border-r border-gray-300">
+                                <span class="block text-gray-500 text-xs uppercase font-semibold tracking-wider mb-1">Tồn kho</span>
+                                <span class="block font-bold text-xl ${stockClass}">${stockText}</span>
+                            </div>
+                            <!-- Vị trí -->
+                            <div class="text-center">
+                                <span class="block text-gray-500 text-xs uppercase font-semibold tracking-wider mb-1">Vị trí</span>
+                                <span class="block font-bold text-xl text-purple-700 flex items-center justify-center">
+                                    <i class="fas fa-map-marker-alt text-sm mr-1 opacity-50"></i>${item.location}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                resultsGrid.appendChild(card);
+            });
+        }
+
+        // Bắt sự kiện phím tắt (nếu cần)
+        document.addEventListener('keydown', (e) => {
+            // Nhấn F3 hoặc / để focus vào ô tìm kiếm
+            if (e.key === 'F3' || e.key === '/') {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        });
+
+    </script>
+</body>
+</html>

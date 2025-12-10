@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý Siêu Thị</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f3f4f6; }
+        .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .input-focus:focus { border-color: #3b82f6; ring: 2px; ring-color: #93c5fd; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="h-screen w-full overflow-hidden">
+
+    <!-- =========================================
+       PHẦN 1: DỮ LIỆU GIẢ LẬP 
+    ========================================= -->
+    <script>
+        const db = {
+            products: [
+                { id: "SP001", barcode: "8930001", name: "Mì Hảo Hảo Tôm Chua Cay", unit: "Gói", price: 4500, stock: 240, location: "Kệ A1", minStock: 50 },
+                { id: "SP002", barcode: "8930002", name: "Nước ngọt Coca Cola 330ml", unit: "Lon", price: 10000, stock: 15, location: "Tủ mát 1", minStock: 20 },
+                { id: "SP003", barcode: "8930003", name: "Bánh Snack Oishi Tôm", unit: "Gói", price: 6000, stock: 100, location: "Kệ B2", minStock: 20 },
+                { id: "SP004", barcode: "8930004", name: "Dầu ăn Tường An 1L", unit: "Chai", price: 45000, stock: 0, location: "Kệ C1", minStock: 10 },
+                { id: "SP005", barcode: "8930005", name: "Gạo Nàng Thơm 5kg", unit: "Túi", price: 120000, stock: 30, location: "Kệ D1", minStock: 5 },
+                { id: "SP006", barcode: "8930006", name: "Trứng gà Ba Huân (vỉ 10)", unit: "Vỉ", price: 32000, stock: 50, location: "Kệ mát 2", minStock: 10 },
+                { id: "SP007", barcode: "8930007", name: "Sữa tươi Vinamilk 1L", unit: "Hộp", price: 30000, stock: 45, location: "Kệ sữa", minStock: 12 },
+                { id: "SP008", barcode: "8930008", name: "Bột giặt OMO 3kg", unit: "Túi", price: 150000, stock: 20, location: "Kệ hóa phẩm", minStock: 10 },
+                { id: "SP009", barcode: "8930009", name: "Nước mắm Nam Ngư", unit: "Chai", price: 42000, stock: 60, location: "Kệ gia vị", minStock: 15 },
+                { id: "SP010", barcode: "8930010", name: "Khăn giấy ướt Baby", unit: "Gói", price: 25000, stock: 120, location: "Kệ A2", minStock: 30 }
+            ],
+            users: [
+                { username: "admin", password: "123", name: "Quản Lý Cửa Hàng", role: "admin" },
+                { username: "nv01", password: "123", name: "Nguyễn Văn A", role: "staff" }
+            ],
+            vips: [
+                { code: "VIP001", name: "Trần Thị Khách", phone: "0909123456", level: "Gold", discount: 5, points: 1200, used: 10, maxUse: 50 },
+                { code: "VIP002", name: "Lê Văn Vip", phone: "0918123456", level: "Silver", discount: 2, points: 500, used: 45, maxUse: 50 }
+            ]
+        };
+
+        if (!localStorage.getItem('supermarket_db')) {
+            localStorage.setItem('supermarket_db', JSON.stringify(db));
+        }
+    </script>
+
+    <!-- =========================================
+       PHẦN 2: ĐĂNG NHẬP
+    ========================================= -->
+    <div id="login-screen" class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-700 absolute top-0 left-0 z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-96 fade-in">
+            <div class="text-center mb-8">
+                <div class="inline-block p-4 rounded-full bg-blue-100 mb-4">
+                    <i class="fas fa-shopping-cart text-4xl text-blue-600"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">ĐĂNG NHẬP HỆ THỐNG</h1>
+                <p class="text-gray-500 text-sm mt-2">Phần mềm Quản lý Siêu thị</p>
+            </div>
+            
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Tên đăng nhập</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                            <i class="fas fa-user"></i>
+                        </span>
+                        <input type="text" id="username" class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition duration-200" placeholder="Mã NV hoặc Username" required>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Mật khẩu</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <input type="password" id="password" class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition duration-200" placeholder="******" required>
+                    </div>
+                </div>
+                
+                <p id="login-error" class="text-red-500 text-sm italic mb-4 hidden text-center"></p>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transition duration-200 transform hover:-translate-y-1">
+                    ĐĂNG NHẬP
+                </button>
+                <div class="mt-4 flex justify-between">
+                    <button type="button" onclick="alert('Đóng ứng dụng')" class="text-gray-500 hover:text-gray-700 text-sm">
+                        <i class="fas fa-power-off mr-1"></i> Thoát
+                    </button>
+                    <span class="text-gray-400 text-xs mt-1">Gợi ý: admin / 123</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- =========================================
+       PHẦN 3: TRANG CHỦ
+    ========================================= -->
+    <div id="dashboard-screen" class="hidden w-full h-full flex flex-col bg-gray-100 fade-in">
+        <!-- Header -->
+        <header class="bg-blue-700 text-white shadow-md">
+            <div class="container mx-auto px-4 h-16 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-store text-2xl"></i>
+                    <span class="text-xl font-bold tracking-wide">SIÊU THỊ MINI MANAGER</span>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="flex flex-col text-right">
+                        <span class="font-semibold" id="user-display-name">Quản Lý</span>
+                        <span class="text-xs text-blue-200" id="current-time"></span>
+                    </div>
+                    <button onclick="logout()" class="bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded-lg text-sm transition">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Đăng xuất
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-8 overflow-y-auto">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-l-4 border-blue-600 pl-3">Chức Năng Quản Lý</h2>
+            
+            <!-- Grid 8 Chức Năng -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                <div onclick="navigateTo('thanhtoan.html')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition cursor-pointer border-t-4 border-green-500 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition">
+                            <i class="fas fa-cash-register text-2xl text-green-600"></i>
+                        </div>
+                        <span class="bg-gray-100 text-xs px-2 py-1 rounded">F1</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-green-600">Thanh Toán (POS)</h3>
+                    <p class="text-sm text-gray-500 mt-2">Bán hàng, in hóa đơn, áp dụng VIP.</p>
+                </div>
+
+                <div onclick="navigateTo('doihang.html')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition cursor-pointer border-t-4 border-blue-500 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition">
+                            <i class="fas fa-exchange-alt text-2xl text-blue-600"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-blue-600">Đổi Hàng</h3>
+                    <p class="text-sm text-gray-500 mt-2">Tra cứu hóa đơn gốc, tính chênh lệch.</p>
+                </div>
+
+                <div onclick="navigateTo('trahang.html')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition cursor-pointer border-t-4 border-orange-500 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition">
+                            <i class="fas fa-undo text-2xl text-orange-600"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-orange-600">Trả Hàng</h3>
+                    <p class="text-sm text-gray-500 mt-2">Hoàn tiền mặt, nhập lại kho.</p>
+                </div>
+
+                <div onclick="navigateTo('timhang.html')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition cursor-pointer border-t-4 border-purple-500 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition">
+                            <i class="fas fa-search text-2xl text-purple-600"></i>
+                        </div>
+                        <span class="bg-gray-100 text-xs px-2 py-1 rounded">F3</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-purple-600">Tìm Hàng Hóa</h3>
+                    <p class="text-sm text-gray-500 mt-2">Tra cứu giá, vị trí kệ, tồn kho.</p>
+                </div>
+
+                <div onclick="navigateTo('xemxet.html')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition cursor-pointer border-t-4 border-yellow-500 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3 bg-yellow-100 rounded-lg group-hover:bg-yellow-200 transition">
+                            <i class="fas fa-boxes text-2xl text-yellow-600"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-yellow-600">Xem Xét Tồn Kho</h3>
+                    <p class="text-sm text-gray-500 mt-2">Cảnh báo hàng sắp hết, báo cáo.</p>
+                </div>
+
+                <div onclick="navigateTo('lapphieu.html')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition cursor-pointer border-t-4 border-teal-500 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3 bg-teal-100 rounded-lg group-hover:bg-teal-200 transition">
+                            <i class="fas fa-file-import text-2xl text-teal-600"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-teal-600">Phiếu Nhập Hàng</h3>
+                    <p class="text-sm text-gray-500 mt-2">Đề xuất nhập hàng dựa trên tồn kho.</p>
+                </div>
+
+                <div onclick="navigateTo('quanlythevip.html')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition cursor-pointer border-t-4 border-pink-500 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3 bg-pink-100 rounded-lg group-hover:bg-pink-200 transition">
+                            <i class="fas fa-id-card text-2xl text-pink-600"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-pink-600">Quản Lý Thẻ VIP</h3>
+                    <p class="text-sm text-gray-500 mt-2">Thêm loại thẻ, thiết lập giảm giá.</p>
+                </div>
+
+                <div onclick="navigateTo('quanlyhanghoa.html')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition cursor-pointer border-t-4 border-indigo-500 group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition">
+                            <i class="fas fa-box-open text-2xl text-indigo-600"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-indigo-600">Quản Lý Hàng Hóa</h3>
+                    <p class="text-sm text-gray-500 mt-2">Thêm mới, sửa giá, ngừng kinh doanh.</p>
+                </div>
+            </div>
+
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div class="bg-gradient-to-r from-blue-500 to-blue-400 rounded-xl p-4 text-white">
+                     <p class="text-sm opacity-80">Doanh thu hôm nay</p>
+                     <p class="text-2xl font-bold">12,500,000 đ</p>
+                 </div>
+                 <div class="bg-gradient-to-r from-red-500 to-red-400 rounded-xl p-4 text-white">
+                     <p class="text-sm opacity-80">Cảnh báo tồn kho</p>
+                     <p class="text-2xl font-bold">3 mặt hàng</p>
+                 </div>
+                 <div class="bg-gradient-to-r from-green-500 to-green-400 rounded-xl p-4 text-white">
+                     <p class="text-sm opacity-80">Lượng khách VIP</p>
+                     <p class="text-2xl font-bold">15 lượt</p>
+                 </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- =========================================
+       PHẦN 4: LOGIC ĐIỀU KHIỂN
+    ========================================= -->
+   <script>
+    const loginScreen = document.getElementById('login-screen');
+    const dashboardScreen = document.getElementById('dashboard-screen');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const loginError = document.getElementById('login-error');
+    const userDisplayName = document.getElementById('user-display-name');
+    const timeDisplay = document.getElementById('current-time');
+
+    // Biến đếm số lần nhập sai
+    let loginAttempts = 0;
+    let isLocked = false;
+
+    window.onload = function() {
+        usernameInput.focus();
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        const currentUser = sessionStorage.getItem('currentUser');
+        if (currentUser) {
+            showDashboard(JSON.parse(currentUser));
+        }
+    };
+
+    function handleLogin(e) {
+        e.preventDefault();
+        if (isLocked) {
+            loginError.textContent = "Tài khoản đã bị khóa!";
+            loginError.classList.remove('hidden');
+            return;
+        }
+
+        const user = usernameInput.value;
+        const pass = passwordInput.value;
+
+        const dbData = JSON.parse(localStorage.getItem('supermarket_db') || JSON.stringify(db));
+        const foundUser = dbData.users.find(u => u.username === user && u.password === pass);
+
+        if (foundUser) {
+            sessionStorage.setItem('currentUser', JSON.stringify(foundUser));
+            loginError.classList.add('hidden');
+            alert("Đăng nhập thành công ✅");   // Thông báo khi đăng nhập đúng
+            showDashboard(foundUser);
+            loginAttempts = 0; // reset số lần sai
+        } else {
+            loginAttempts++;
+            if (loginAttempts >= 5) {
+                isLocked = true;
+                loginError.textContent = "Tài khoản đã bị khóa sau 5 lần nhập sai!";
+            } else {
+                loginError.textContent = "Tên đăng nhập hoặc mật khẩu không đúng! (Lần sai: " + loginAttempts + ")";
+            }
+            loginError.classList.remove('hidden');
+            const form = document.getElementById('login-form');
+            form.classList.add('animate-pulse');
+            setTimeout(() => form.classList.remove('animate-pulse'), 500);
+        }
+    }
+
+    function showDashboard(user) {
+        loginScreen.classList.add('hidden');
+        dashboardScreen.classList.remove('hidden');
+        userDisplayName.textContent = user.name;
+    }
+
+    function logout() {
+        sessionStorage.removeItem('currentUser');
+        dashboardScreen.classList.add('hidden');
+        loginScreen.classList.remove('hidden');
+        usernameInput.value = "";
+        passwordInput.value = "";
+        usernameInput.focus();
+    }
+
+    function navigateTo(page) {
+        window.location.href = page;
+    }
+
+    function updateTime() {
+        const now = new Date();
+        timeDisplay.textContent = now.toLocaleTimeString('vi-VN') + " " + now.toLocaleDateString('vi-VN');
+    }
+</script>
+
+</body>
+</html>

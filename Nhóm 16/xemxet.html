@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xem Xét & Kiểm Kê Tồn Kho</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script> <!-- Thư viện xuất Excel giả lập -->
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f3f4f6; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background-color: #e5e7eb; }
+        th.sortable i { margin-left: 5px; opacity: 0.5; }
+        th.sortable.asc i.fa-sort-up { opacity: 1; color: #2563eb; }
+        th.sortable.desc i.fa-sort-down { opacity: 1; color: #2563eb; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-blue-800 text-white h-12 flex items-center justify-between px-4 shadow-md shrink-0">
+        <div class="flex items-center space-x-4">
+            <a href="supermarket_system.html" class="hover:text-blue-200"><i class="fas fa-arrow-left mr-1"></i> Trang chủ</a>
+            <span class="font-bold text-lg">|</span>
+            <span class="font-bold text-lg uppercase"><i class="fas fa-boxes mr-2"></i>Quản Lý Tồn Kho</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm font-mono bg-blue-900 px-2 py-1 rounded" id="today-date">--/--/----</span>
+            <span class="font-semibold"><i class="fas fa-user-tie mr-1"></i> Quản Lý Kho</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col p-4 overflow-hidden space-y-4">
+        
+        <!-- 1. DASHBOARD STATS (Thống kê nhanh) -->
+        <div class="grid grid-cols-4 gap-4 shrink-0">
+            <!-- Tổng hàng hóa -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500 flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs uppercase font-bold">Tổng mặt hàng</p>
+                    <p class="text-2xl font-bold text-blue-700" id="stat-total">0</p>
+                </div>
+                <i class="fas fa-cube text-3xl text-blue-100"></i>
+            </div>
+            
+            <!-- Hàng bình thường -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500 flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs uppercase font-bold">An toàn</p>
+                    <p class="text-2xl font-bold text-green-600" id="stat-safe">0</p>
+                </div>
+                <i class="fas fa-check-circle text-3xl text-green-100"></i>
+            </div>
+
+            <!-- Sắp hết -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-yellow-500 flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs uppercase font-bold">Sắp hết (Low)</p>
+                    <p class="text-2xl font-bold text-yellow-600" id="stat-low">0</p>
+                </div>
+                <i class="fas fa-exclamation-triangle text-3xl text-yellow-100"></i>
+            </div>
+
+            <!-- Hết hàng -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500 flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-xs uppercase font-bold">Hết hàng (Out)</p>
+                    <p class="text-2xl font-bold text-red-600" id="stat-out">0</p>
+                </div>
+                <i class="fas fa-ban text-3xl text-red-100"></i>
+            </div>
+        </div>
+
+        <!-- 2. TOOLBAR & FILTER -->
+        <div class="bg-white p-3 rounded-xl shadow-sm flex flex-wrap gap-4 justify-between items-center shrink-0">
+            <div class="flex space-x-2 items-center">
+                <span class="font-bold text-gray-600 text-sm"><i class="fas fa-filter mr-1"></i> Lọc trạng thái:</span>
+                <select id="filter-status" onchange="applyFilters()" class="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:border-blue-500">
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="safe">✅ Bình thường (Đủ)</option>
+                    <option value="low">⚠️ Sắp hết hàng</option>
+                    <option value="out">❌ Đã hết hàng</option>
+                </select>
+
+                <span class="font-bold text-gray-600 text-sm ml-4"><i class="fas fa-layer-group mr-1"></i> Nhóm hàng:</span>
+                <select id="filter-group" onchange="applyFilters()" class="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:border-blue-500">
+                    <option value="all">Tất cả nhóm</option>
+                    <option value="Kệ A">Khu vực A (Thực phẩm khô)</option>
+                    <option value="Kệ B">Khu vực B (Bánh kẹo)</option>
+                    <option value="Tủ mát">Khu vực lạnh</option>
+                    <!-- Trong thực tế options này sẽ render động từ DB -->
+                </select>
+            </div>
+
+            <div class="flex space-x-2">
+                <div class="relative">
+                    <input type="text" id="search-grid" onkeyup="applyFilters()" placeholder="Tìm tên hoặc mã..." class="pl-8 pr-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 w-64">
+                    <i class="fas fa-search absolute left-2 top-1.5 text-gray-400 text-xs"></i>
+                </div>
+                <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm font-bold shadow transition">
+                    <i class="fas fa-file-excel mr-1"></i> Xuất Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. DATA GRID -->
+        <div class="flex-grow bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+            <div class="overflow-y-auto flex-grow">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-gray-600 uppercase text-xs sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="p-3 w-10 text-center">STT</th>
+                            <th class="p-3 w-32 sortable" onclick="sortTable('barcode')">Mã Hàng <i class="fas fa-sort"></i></th>
+                            <th class="p-3 sortable" onclick="sortTable('name')">Tên Hàng Hóa <i class="fas fa-sort"></i></th>
+                            <th class="p-3 w-32 text-center sortable" onclick="sortTable('location')">Vị trí <i class="fas fa-sort"></i></th>
+                            <th class="p-3 w-20 text-center">ĐVT</th>
+                            <th class="p-3 w-32 text-center sortable" onclick="sortTable('stock')">Tồn Kho <i class="fas fa-sort"></i></th>
+                            <th class="p-3 w-24 text-center">Định Mức</th>
+                            <th class="p-3 w-40 text-center">Trạng Thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-table-body" class="text-sm">
+                        <!-- JS Render -->
+                    </tbody>
+                </table>
+                <div id="no-data" class="hidden h-40 flex items-center justify-center text-gray-400">
+                    Không tìm thấy dữ liệu phù hợp.
+                </div>
+            </div>
+            
+            <!-- Footer Pagination (Giả lập) -->
+            <div class="p-2 border-t bg-gray-50 flex justify-between items-center text-xs text-gray-500">
+                <span>Hiển thị <span id="showing-count" class="font-bold">0</span> kết quả</span>
+                <div class="flex space-x-1">
+                    <button class="px-2 py-1 border rounded bg-white hover:bg-gray-100">Trước</button>
+                    <button class="px-2 py-1 border rounded bg-blue-600 text-white">1</button>
+                    <button class="px-2 py-1 border rounded bg-white hover:bg-gray-100">2</button>
+                    <button class="px-2 py-1 border rounded bg-white hover:bg-gray-100">Sau</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* =========================================
+           1. SETUP DATA
+        ========================================= */
+        const dbData = JSON.parse(localStorage.getItem('supermarket_db') || '{}');
+        const products = dbData.products || [];
+        
+        // Biến toàn cục để lưu trạng thái sort
+        let currentSort = { column: 'stock', dir: 'asc' }; // Mặc định sort theo tồn kho tăng dần để thấy hàng hết trước
+        let filteredData = [...products];
+
+        // DOM Elements
+        const tableBody = document.getElementById('inventory-table-body');
+        const noData = document.getElementById('no-data');
+        
+        // Stats Elements
+        const statTotal = document.getElementById('stat-total');
+        const statSafe = document.getElementById('stat-safe');
+        const statLow = document.getElementById('stat-low');
+        const statOut = document.getElementById('stat-out');
+
+        window.onload = function() {
+            document.getElementById('today-date').innerText = new Date().toLocaleDateString('vi-VN');
+            updateStats();
+            applyFilters(); // Render lần đầu
+        };
+
+        /* =========================================
+           2. LOGIC RENDER & STATS
+        ========================================= */
+        function updateStats() {
+            const total = products.length;
+            const out = products.filter(p => p.stock === 0).length;
+            const low = products.filter(p => p.stock > 0 && p.stock <= p.minStock).length;
+            const safe = total - out - low;
+
+            statTotal.innerText = total;
+            statOut.innerText = out;
+            statLow.innerText = low;
+            statSafe.innerText = safe;
+        }
+
+        function renderTable(data) {
+            tableBody.innerHTML = '';
+            document.getElementById('showing-count').innerText = data.length;
+
+            if (data.length === 0) {
+                noData.classList.remove('hidden');
+                return;
+            }
+            noData.classList.add('hidden');
+
+            data.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50 transition";
+                
+                // Logic trạng thái
+                let statusBadge = '';
+                let stockClass = 'font-bold text-gray-700';
+                let rowBg = '';
+
+                if (item.stock === 0) {
+                    statusBadge = '<span class="px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold border border-red-200">HẾT HÀNG</span>';
+                    stockClass = 'font-bold text-red-600';
+                    rowBg = 'bg-red-50'; // Tô màu cả dòng cho nổi
+                } else if (item.stock <= item.minStock) {
+                    statusBadge = '<span class="px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold border border-yellow-200">SẮP HẾT</span>';
+                    stockClass = 'font-bold text-yellow-600';
+                } else {
+                    statusBadge = '<span class="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold border border-green-200">BÌNH THƯỜNG</span>';
+                    stockClass = 'font-bold text-green-600';
+                }
+
+                // Nếu dòng được tô màu nền (hết hàng) thì override class tr
+                if (rowBg) tr.classList.add(rowBg);
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center text-gray-500">${index + 1}</td>
+                    <td class="p-3 font-mono text-gray-600">${item.barcode}</td>
+                    <td class="p-3 font-medium text-gray-800">${item.name}</td>
+                    <td class="p-3 text-center text-gray-600"><i class="fas fa-map-marker-alt mr-1 text-gray-400"></i>${item.location}</td>
+                    <td class="p-3 text-center text-gray-500">${item.unit}</td>
+                    <td class="p-3 text-center ${stockClass}">${item.stock}</td>
+                    <td class="p-3 text-center text-gray-500">${item.minStock}</td>
+                    <td class="p-3 text-center">${statusBadge}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        /* =========================================
+           3. LOGIC FILTER & SORT
+        ========================================= */
+        function applyFilters() {
+            const statusFilter = document.getElementById('filter-status').value;
+            const groupFilter = document.getElementById('filter-group').value; // Demo filtering location as group roughly
+            const keyword = document.getElementById('search-grid').value.toLowerCase();
+
+            filteredData = products.filter(item => {
+                // 1. Lọc trạng thái
+                let statusMatch = true;
+                if (statusFilter === 'out') statusMatch = item.stock === 0;
+                else if (statusFilter === 'low') statusMatch = item.stock > 0 && item.stock <= item.minStock;
+                else if (statusFilter === 'safe') statusMatch = item.stock > item.minStock;
+
+                // 2. Lọc nhóm (Demo: lọc theo location chứa từ khóa)
+                let groupMatch = true;
+                if (groupFilter !== 'all') {
+                    // Logic tạm: Map "Kệ A" -> tìm location chứa "A"
+                    const key = groupFilter.replace('Khu vực ', '').replace('Kệ ', ''); 
+                    groupMatch = item.location.includes(key);
+                }
+
+                // 3. Tìm kiếm
+                const searchMatch = item.name.toLowerCase().includes(keyword) || item.barcode.includes(keyword);
+
+                return statusMatch && groupMatch && searchMatch;
+            });
+
+            // Sau khi lọc, áp dụng sort hiện tại
+            doSort();
+        }
+
+        function sortTable(column) {
+            // Toggle direction
+            if (currentSort.column === column) {
+                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.dir = 'asc';
+            }
+
+            // Update UI headers icon
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+                th.querySelector('i').className = 'fas fa-sort'; // Reset icon
+            });
+            const activeTh = document.querySelector(`th[onclick="sortTable('${column}')"]`);
+            if(activeTh) {
+                activeTh.classList.add(currentSort.dir);
+                activeTh.querySelector('i').className = currentSort.dir === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+            }
+
+            doSort();
+        }
+
+        function doSort() {
+            const { column, dir } = currentSort;
+            
+            filteredData.sort((a, b) => {
+                let valA = a[column];
+                let valB = b[column];
+
+                // Xử lý số và chuỗi
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                if (valA < valB) return dir === 'asc' ? -1 : 1;
+                if (valA > valB) return dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderTable(filteredData);
+        }
+
+        /* =========================================
+           4. EXPORT EXCEL
+        ========================================= */
+        function exportToExcel() {
+            // Chuẩn bị dữ liệu
+            const exportData = filteredData.map(item => ({
+                "Mã Hàng": item.barcode,
+                "Tên Hàng": item.name,
+                "Đơn Vị": item.unit,
+                "Vị Trí": item.location,
+                "Tồn Kho": item.stock,
+                "Định Mức Tối Thiểu": item.minStock,
+                "Trạng Thái": item.stock === 0 ? "Hết hàng" : (item.stock <= item.minStock ? "Sắp hết" : "Đủ")
+            }));
+
+            // Sử dụng SheetJS (đã include ở head)
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "TonKho");
+
+            // Save file
+            const fileName = `BaoCaoTonKho_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+
+            alert("✅ Đã xuất file báo cáo thành công!\nTên file: " + fileName);
+        }
+
+    </script>
+</body>
+</html>
